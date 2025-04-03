@@ -251,6 +251,6 @@ client = VoiceHarborClient(
 )
 
 # Download the processed results.
-downloaded_results = client.download_results(output_dir="./results")
+downloaded_results = client.download_results(output_dir="./results", yaml="<job_yaml_file>")
 logger.info(f"Downloaded results for job {JOB_ID}: {downloaded_results}")
 ```

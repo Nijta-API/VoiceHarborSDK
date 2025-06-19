@@ -441,8 +441,7 @@ class VoiceHarborClient:
                 result = future.result()
                 downloaded.update(result)
         return downloaded
-
-
+      
 def main():
     """
     Entry point for the Voice Harbor Client CLI.
@@ -452,37 +451,57 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Voice Harbor Client CLI")
     parser.add_argument("--base-url", type=str, required=True, help="Base URL for the Voice Harbor API")
+    parser.add_argument("--task", type=str, required=True, help="Task to perform on data")
+    parser.add_argument("--diar", type=str, help="Diarize audio input file")
+    parser.add_argument("--model", type=str, choices=["advanced", "mini"], help="PHI redaction model to use")
+    parser.add_argument("--code-switch", dest="code_switch", type=str, help="Use code-switching supported ASR model")
+    parser.add_argument("--biometric", type=str, help="Set target language for biometric voice print redaction")
     parser.add_argument("--token", type=str, required=True, help="Authorization token")
     parser.add_argument("--inputs-dir", type=str, required=True, help="Directory containing input files")
     parser.add_argument("--output-dir", type=str, default="./results", help="Directory to save the output files")
     parser.add_argument("--timeout", type=int, default=600, help="Timeout for waiting for files (in seconds)")
     parser.add_argument("--interval", type=int, default=10, help="Polling interval (in seconds)")
-    parser.add_argument("--agents", nargs="+", default=["health-generic", "clinical"], help="List of agents to use")
+    parser.add_argument("--agents", nargs="+", required=False, help="List of agents to use for advanced model")
     parser.add_argument("--prefix", type=str, default="", help="Optional prefix to include in the job parameters")
-    
+
     args = parser.parse_args()
-    
+
     # Create a new job on the server using the class method.
     job_id = VoiceHarborClient.create_job(args.base_url, args.token)
     logger.info(f"Job created on server with id: {job_id}")
-    
+
     client = VoiceHarborClient(
         base_url=args.base_url,
         job_id=job_id,
         token=args.token,
         inputs_dir=args.inputs_dir
     )
-    
-    # Build job parameters. If a prefix is provided, include it.
-    job_params = {"agents": args.agents, "files": []}
+
+    # Build job parameters, include only provided options.
+    job_params = {
+        "task": args.task,
+        "files": []
+    }
+
+    # Optional parameters
+    if args.agents:
+        job_params["agents"] = args.agents
     if args.prefix:
         job_params["prefix"] = args.prefix
-    
+    if args.diar:
+        job_params["diar"] = args.diar
+    if args.model:
+        job_params["model"] = args.model
+    if args.code_switch:
+        job_params["code_switch"] = args.code_switch
+    if args.biometric:
+        job_params["biometric"] = args.biometric
+
     # Submit input files and then the job file.
     job_params = client.submit_files(job_params)
     job_file = client.submit_job(job_params)
     logger.info(f"Job file created: {job_file}")
-    
+
     # Download results by polling for each file until available.
     downloaded_files = client.download_results(
         output_dir=args.output_dir,
